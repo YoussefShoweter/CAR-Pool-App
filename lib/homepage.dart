@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';  // Import Provider
-import 'helpers/usertype.dart';  // Import UserTypeProvider
+import 'firestore_service.dart';
 import 'drivermain.dart';
 import 'usermain.dart';
+import 'package:provider/provider.dart';
+import 'helpers/usertype.dart';
 
 class HomePage extends StatefulWidget {
-
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -33,25 +33,30 @@ class _HomePageState extends State<HomePage> {
       );
 
       if (userCredential.user != null) {
-        // Retrieve user type using UserTypeProvider
-        String userType = Provider.of<UserTypeProvider>(context, listen: false).getUserType();
+        String userTypeFromProvider = Provider.of<UserTypeProvider>(context, listen: false).getUserType();
+        String userTypeFromFirestore = await FirestoreService().getUserTypeById(userCredential.user!.uid);
 
-        if (userType == 'driver') {
-          // Navigate to the DriverPage for driver users and pass the userCredential
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DriverPage(userCredential: userCredential),
-            ),
-          );
+        // Check if user types match
+        if (userTypeFromProvider == userTypeFromFirestore) {
+          if (userTypeFromProvider == 'driver') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DriverPage(userCredential: userCredential),
+              ),
+            );
+          } else {
+            // Navigate to the UserPage for regular users and pass the userCredential
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserPage(userCredential: userCredential),
+              ),
+            );
+          }
         } else {
-          // Navigate to the UserPage for regular users and pass the userCredential
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserPage(userCredential: userCredential),
-            ),
-          );
+          // User types do not match, handle accordingly
+          print("User types do not match");
         }
       } else {
         // Authentication failed
@@ -64,13 +69,29 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+    } catch (e) {
+      print("Error logging out: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text('ASU To-Do List App'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: () => _logout(context),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
