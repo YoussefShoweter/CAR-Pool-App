@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'driverprofile.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,7 +8,6 @@ import 'models/reservation.dart';
 import 'firestore_service.dart';
 import 'reservationscreen.dart';
 import 'package:date_format/date_format.dart';
-
 
 class UserPage extends StatefulWidget {
   final UserCredential userCredential;
@@ -24,8 +25,24 @@ class _UserPageState extends State<UserPage> {
   @override
   void initState() {
     super.initState();
-    _fetchAvailableRides();
-    _fetchUserReservations();
+    _fetchData();
+    _startPeriodicFetching();
+  }
+
+  void _startPeriodicFetching() {
+    // Use a timer to fetch data every 10 seconds
+    Timer.periodic(Duration(seconds: 10), (Timer timer) {
+      _fetchData();
+    });
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      await _fetchAvailableRides();
+      await _fetchUserReservations();
+    } catch (e) {
+      print('Error fetching data: $e');
+    }
   }
 
   Future<void> _fetchAvailableRides() async {
@@ -56,20 +73,22 @@ class _UserPageState extends State<UserPage> {
       print("Error logging out: $e");
     }
   }
-  bool _getAppropriate(DateTime rideDate) {
-    // Get the current time
-    DateTime currentTime = DateTime.now();
 
-    // Calculate the difference in hours
+  bool _getAppropriate(DateTime rideDate,start) {
+    DateTime currentTime = DateTime.now();
     int hoursDifference = rideDate.difference(currentTime).inHours;
 
-    // Check if the difference is at least 6 hours
-    return hoursDifference >= 6;
+    if(start =='Gate 3' || start=='Gate 4'){
+      return hoursDifference >= 4.5;
+    }
+    else{
+      return hoursDifference >= 9.5;
+
+    }
+
   }
 
-
   Future<void> _reserveRide(BuildContext context, Ride ride) async {
-    // Navigate to the reservation screen
     final bool reservationSuccess = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -78,11 +97,9 @@ class _UserPageState extends State<UserPage> {
     );
 
     if (reservationSuccess == true) {
-      // Handle logic after successful reservation, e.g., show a confirmation message.
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Reservation successful!'),
       ));
-      // Refresh reservations after a successful reservation
       _fetchUserReservations();
     }
   }
@@ -94,7 +111,6 @@ class _UserPageState extends State<UserPage> {
       child: Scaffold(
         appBar: AppBar(
           title: Text('User Page'),
-
           actions: [
             IconButton(
               icon: Icon(Icons.person),
@@ -107,7 +123,6 @@ class _UserPageState extends State<UserPage> {
                 );
               },
             ),
-            // Logout Button
             IconButton(
               icon: Icon(Icons.logout),
               onPressed: () => _logout(context),
@@ -127,39 +142,87 @@ class _UserPageState extends State<UserPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  SizedBox(height: 20),
+
                   Text(
                     'Available Rides',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(2.0, 2.0), // Change the values based on your preference
+                          blurRadius: 3.0,
+                          color: Colors.grey, // Change the shadow color to your preference
+                        ),
+                      ],
+                    ),
                   ),
+
                   SizedBox(height: 20),
                   Builder(
                     builder: (context) {
-                      List<Ride> filteredRides=availableRides.where((element) => _getAppropriate(element.rideDateTime)).toList();
+                      List<Ride> filteredRides = availableRides.where((element) => _getAppropriate(element.rideDateTime,element.startPoint)).toList();
                       return ListView.builder(
                         shrinkWrap: true,
                         itemCount: filteredRides.length,
                         itemBuilder: (context, index) {
                           final ride = filteredRides[index];
-                          return ListTile(
-                            title: Text('Date: ${ride.date}'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Driver ID: ${ride.driverId}'),
-                                Text('Driver: ${ride.driverName}'),
-                                Text('From: ${ride.startPoint}'),
-                                Text('To: ${ride.destinationPoint}'),
-                                Text('Price: \$${ride.price.toStringAsFixed(2)}'),
-                              ],
-                            ),
-                            trailing: ElevatedButton(
-                              onPressed: () => _reserveRide(context, ride),
-                              child: Text('Reserve'),
+                          return Card(
+                            elevation: 3,
+                            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16),
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Date: ${ride.rideDateTime.day} - ${ride.rideDateTime.month} - ${ride.rideDateTime.year}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Driver: ${ride.driverName}',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'From: ${ride.startPoint}',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'To: ${ride.destinationPoint}',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Price: \$${ride.price.toStringAsFixed(2)}',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: () => _reserveRide(context, ride),
+                                style: ElevatedButton.styleFrom(
+                                  primary: Colors.blue, // Change the button color to your preference
+                                ),
+                                child: Text(
+                                  'Reserve',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
                             ),
                           );
+
                         },
                       );
-                    }
+                    },
                   ),
                 ],
               ),
@@ -169,10 +232,23 @@ class _UserPageState extends State<UserPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  SizedBox(height: 20),
+
                   Text(
                     'Reservations',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(2.0, 2.0), // Change the values based on your preference
+                          blurRadius: 3.0,
+                          color: Colors.grey, // Change the shadow color to your preference
+                        ),
+                      ],
+                    ),
                   ),
+
                   SizedBox(height: 20),
                   ListView.builder(
                     shrinkWrap: true,
@@ -192,21 +268,41 @@ class _UserPageState extends State<UserPage> {
                           final ride = snapshot.data!;
 
                           return Card(
+                            elevation: 3,
+                            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             child: ListTile(
-                              title: Text('Date and Time: ${ride.rideDateTime}'), // Use DateFormat to format DateTime
+                              title: Text(
+                                'Date: ${ride.rideDateTime.day} - ${ride.rideDateTime.month} - ${ride.rideDateTime.year}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Driver ID: ${reservation.driverId}'),
                                   Text('Driver: ${ride.driverName}'),
                                   Text('From: ${ride.startPoint}'),
                                   Text('To: ${ride.destinationPoint}'),
                                   Text('Price: \$${ride.price.toStringAsFixed(2)}'),
                                 ],
                               ),
-                              trailing: Text('Status: ${reservation.status}'),
+                              trailing: Container(
+                                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: reservation.status == 'Pending' ? Colors.red : Colors.green,
+                                ),
+                                child: Text(
+                                  'Status: ${reservation.status}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                             ),
                           );
+
                         },
                       );
                     },

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'models/ride.dart';
 import 'models/reservation.dart';
 
@@ -23,7 +22,7 @@ class FirestoreService {
       return 'Unknown User';
     }
   }
-  Future<Map<String, dynamic>> getDriverProfile(String driverId) async {
+  Future<Map<String, dynamic>> getProfile(String driverId) async {
     try {
       DocumentSnapshot driverSnapshot = await _usersCollection.doc(driverId).get();
       if (driverSnapshot.exists) {

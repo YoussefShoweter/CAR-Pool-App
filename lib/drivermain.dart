@@ -122,24 +122,85 @@ class _DriverPageState extends State<DriverPage> with SingleTickerProviderStateM
                       itemCount: reservations.length,
                       itemBuilder: (context, index) {
                         final reservation = reservations[index];
-                        return ListTile(
-                          title: Text('User ID: ${reservation.userId}'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Trip ID: ${reservation.rideID}'),
-                              Text('Status: ${reservation.status}'),
-                            ],
-                          ),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              _approveRequest(reservation);
-                            },
-                            child: Text('Approve'),
-                          ),
+
+                        return FutureBuilder<Ride?>(
+                          future: FirestoreService().getRideById(reservation.rideID),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return CircularProgressIndicator();
+                            } else if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            } else if (snapshot.data == null) {
+                              return Text('Error: Ride details not found');
+                            } else {
+                              Ride rideDetails = snapshot.data!;
+
+                              return Card(
+                                elevation: 3,
+                                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.all(16),
+                                  title: FutureBuilder<Map<String, dynamic>>(
+                                    // Assuming getDriverProfile returns a Future<Map<String, dynamic>> for the driver's profile
+                                    future: FirestoreService().getProfile(reservation.userId),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return Text('User Name: Loading...', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+                                      } else if (snapshot.hasError) {
+                                        return Text('User Name: Error: ${snapshot.error}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+                                      } else {
+                                        String username = snapshot.data?['fullName'] ?? 'Unknown User';
+                                        return Text(
+                                          'User Name: $username',
+                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(height: 12),
+                                      Text('Payment Method: ${reservation.paymentMethod}', style: TextStyle(fontSize: 16)),
+                                      Text('Ride Details: ${rideDetails.startPoint} to ${rideDetails.destinationPoint}', style: TextStyle(fontSize: 16)),
+                                      Text(
+                                        'Status: ${reservation.status}',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: reservation.status.toLowerCase() == 'pending' ? FontWeight.bold : FontWeight.normal,
+                                          color: reservation.status.toLowerCase() == 'pending' ? Colors.red : Colors.green,
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 8),
+                                        child: Text('User Comments: ${reservation.additionalComments}', style: TextStyle(fontSize: 16)),
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: ElevatedButton(
+                                    onPressed: () {
+                                      _approveRequest(reservation);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      primary: Colors.green,
+                                    ),
+                                    child: Text(
+                                      'Approve',
+                                      style: TextStyle(color: Colors.white, fontSize: 16),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                         );
                       },
                     );
+
+
+
+
+
                   }
                 },
               ),
@@ -167,18 +228,35 @@ class _DriverPageState extends State<DriverPage> with SingleTickerProviderStateM
       itemCount: _historyRides.length,
       itemBuilder: (context, index) {
         final ride = _historyRides[index];
-        return ListTile(
-          title: Text('Date: ${ride.date}'),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('From: ${ride.startPoint}'),
-              Text('To: ${ride.destinationPoint}'),
-              Text('Price: \$${ride.price.toStringAsFixed(2)}'),
-            ],
+        return Card(
+          elevation: 2, // Add some elevation for a card-like appearance
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: ListTile(
+            contentPadding: EdgeInsets.all(16),
+            title: Text(
+              'Date: ${ride.rideDateTime}',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 8), // Add some spacing between title and subtitle
+                Text('From: ${ride.startPoint}'),
+                Text('To: ${ride.destinationPoint}'),
+                SizedBox(height: 8), // Add some spacing between subtitle items
+                Text(
+                  'Price: \$${ride.price.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: Colors.green, // Customize text color for price
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
+
   }
 }

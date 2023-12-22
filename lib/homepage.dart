@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firestore_service.dart';
 import 'drivermain.dart';
+import 'models/userProfile.dart';
 import 'usermain.dart';
 import 'package:provider/provider.dart';
 import 'helpers/usertype.dart';
+import 'helpers/databaseHelper.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -35,8 +37,18 @@ class _HomePageState extends State<HomePage> {
       if (userCredential.user != null) {
         String userTypeFromProvider = Provider.of<UserTypeProvider>(context, listen: false).getUserType();
         String userTypeFromFirestore = await FirestoreService().getUserTypeById(userCredential.user!.uid);
+        Map<String, dynamic> profileData = await FirestoreService().getProfile(userCredential.user!.uid);
 
-        // Check if user types match
+        await DatabaseHelper().insertUserProfile(
+          UserProfile(
+            id: userCredential.user!.uid,
+            fullName: profileData['fullName'],
+            email: profileData['email'],
+            phoneNumber: profileData['mobile'],
+            userType: profileData['userType'],
+          ),
+        );
+
         if (userTypeFromProvider == userTypeFromFirestore) {
           if (userTypeFromProvider == 'driver') {
             Navigator.push(
@@ -46,7 +58,6 @@ class _HomePageState extends State<HomePage> {
               ),
             );
           } else {
-            // Navigate to the UserPage for regular users and pass the userCredential
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -55,20 +66,39 @@ class _HomePageState extends State<HomePage> {
             );
           }
         } else {
-          // User types do not match, handle accordingly
-          print("User types do not match");
+          // User types do not match, show alert
+          _showAlert(context, "Error", "User types do not match");
         }
       } else {
-        // Authentication failed
-        print("Authentication failed");
+        // Authentication failed, show alert
+        _showAlert(context, "Error", "Invalid credentials");
       }
     } catch (e) {
-      // Handle login errors here
-      print("Error: $e");
-      print("Unsuccessful");
+      // Handle login errors here, show alert
+      _showAlert(context, "Error", "Invalid Login ");
     }
   }
 
+  // Function to show alerts
+  void _showAlert(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
   Future<void> _logout(BuildContext context) async {
     try {
       await FirebaseAuth.instance.signOut();
@@ -84,7 +114,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('ASU To-Do List App'),
+        title: Text('ASU CarPool App'),
         actions: [
           IconButton(
             icon: Icon(Icons.logout),
@@ -98,7 +128,7 @@ class _HomePageState extends State<HomePage> {
           children: <Widget>[
             SizedBox(height: 0.1 * screenHeight),
             Text(
-              'ASU To-Do List App',
+              'ASU Car-Pool App',
               style: TextStyle(
                 fontFamily: 'Roboto',
                 color: Colors.blueGrey,

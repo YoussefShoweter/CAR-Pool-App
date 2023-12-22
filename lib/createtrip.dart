@@ -15,10 +15,17 @@ class CreateTripForm extends StatefulWidget {
 }
 
 class _CreateTripFormState extends State<CreateTripForm> {
+  String tabTitle = ''; // Declare tabTitle variable
+
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController startPointController = TextEditingController();
-  final TextEditingController destinationPointController = TextEditingController();
-  final TextEditingController priceController = TextEditingController();
+  final _formKey2 = GlobalKey<FormState>();
+
+  final TextEditingController startPointController1 = TextEditingController();
+  final TextEditingController destinationPointController1 = TextEditingController();
+  final TextEditingController priceController1 = TextEditingController();
+  final TextEditingController startPointController2 = TextEditingController();
+  final TextEditingController destinationPointController2 = TextEditingController();
+  final TextEditingController priceController2 = TextEditingController();
   late DateTime selectedDate;
   late TimeOfDay selectedTime;
 
@@ -44,35 +51,38 @@ class _CreateTripFormState extends State<CreateTripForm> {
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: selectedTime,
-    );
 
-    if (picked != null && picked != selectedTime) {
-      setState(() {
-        selectedTime = picked;
-      });
-    }
-  }
+  void _addTrip(formkey,startPointController ,destinationPointController,priceController,direction) async {
+    print("Came here");
 
-  void _addTrip() async {
-    if (_formKey.currentState?.validate() ?? false) {
+    if (formkey.currentState?.validate() ?? false) {
+      print("Came here");
+
       final String driverId = widget.userCredential.user?.uid ?? '';
       final String driverName = await FirestoreService().getUserName(driverId);
       final String startPoint = startPointController.text;
       final String destinationPoint = destinationPointController.text;
       final double price = double.parse(priceController.text);
 
-      // Combine selected date and time into a DateTime object
+
       DateTime selectedDateTime = DateTime(
         selectedDate.year,
         selectedDate.month,
         selectedDate.day,
-        selectedTime.hour,
-        selectedTime.minute,
+        17, // Default hour for 'From College'
+        30, // Default minute for 'From College'
       );
+
+      if (direction == 'to') {
+        selectedDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          7, // Default hour for 'To College'
+          30, // Default minute for 'To College'
+        );
+      }
+
 
       Ride newRide = Ride(
         id: '',
@@ -85,11 +95,11 @@ class _CreateTripFormState extends State<CreateTripForm> {
         rideDateTime: selectedDateTime, // Use a single DateTime property
       );
 
-      // Convert DateTime to Timestamp
       Timestamp rideDateTime = Timestamp.fromDate(selectedDateTime);
+      print("Came here");
 
-      // Add the new ride to Firestore with the combined DateTime
       await FirestoreService().addTrip(newRide, rideDateTime);
+
 
       startPointController.clear();
       destinationPointController.clear();
@@ -101,88 +111,220 @@ class _CreateTripFormState extends State<CreateTripForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'From College'),
+              Tab(text: 'To College'),
+            ],
+            onTap: (index) {
+              setState(() {
+                // Set tabTitle based on the selected tab
+                tabTitle = index == 0 ? 'From College' : 'To College';
+              });
+            },
+          ),
+        ),
+        body: TabBarView(
           children: [
-            TextFormField(
-              controller: startPointController,
-              decoration: InputDecoration(labelText: 'Start Point'),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a start point';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: destinationPointController,
-              decoration: InputDecoration(labelText: 'Destination Point'),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a destination point';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'Price'),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a price';
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Text('Select Ride Date:'),
-                SizedBox(width: 10),
-                TextButton(
-                  onPressed: () => _selectDate(context),
-                  child: Text(
-                    '${selectedDate.toLocal()}'.split(' ')[0],
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Text('Select Ride Time:'),
-                SizedBox(width: 10),
-                TextButton(
-                  onPressed: () => _selectTime(context),
-                  child: Text(
-                    '${selectedTime.format(context)}',
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _addTrip();
-                widget.onTripAdded(); // Call the callback function
-              },
-              child: Text('Add Trip'),
-            ),
+            _buildForm(),
+            _buildForm2(),
           ],
         ),
       ),
     );
   }
+  Widget _buildForm() {
+    List<String> dropdownValues = ['Gate 3', 'Gate 4'];
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: 'Gate 3',
+                      decoration: InputDecoration(labelText: 'Start Point '),
+                      items: dropdownValues.map((value) {
+                        return DropdownMenuItem(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        startPointController1.text = value!;
+                      },
+                    ),
+                    TextFormField(
+                      controller: destinationPointController1,
+                      decoration: InputDecoration(labelText: 'Destination Point'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a destination point';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              TextFormField(
+                controller: priceController1,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: 'Price'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a price';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Text('Select Ride Date:'),
+                  SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () => _selectDate(context),
+                    child: Text(
+                      '${selectedDate.toLocal()}'.split(' ')[0],
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+                Row(
+                  children: [
+                    Text('Select Ride Time:'),
+                    SizedBox(width: 10),
+                    Text(
+                      '5:30 PM',
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  _addTrip(_formKey,startPointController1,destinationPointController1,priceController1,"from");
+                  widget.onTripAdded(); // Call the callback function
+                },
+                child: Text('Add Trip '),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildForm2() {
+    List<String> dropdownValues = ['Gate 3', 'Gate 4'];
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Column(
+                  children: [
+                    TextFormField(
+                      controller: startPointController2,
+                      decoration: InputDecoration(labelText: 'Start Point'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a start point';
+                        }
+                        return null;
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: 'Gate 3',
+                      decoration: InputDecoration(labelText: 'Destination Point'),
+                      items: dropdownValues.map((value) {
+                        return DropdownMenuItem(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        destinationPointController2.text = value!;
+                      },
+                    ),
+
+                  ],
+                ),
+
+              TextFormField(
+                controller: priceController2,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: 'Price'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a price';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  Text('Select Ride Date:'),
+                  SizedBox(width: 10),
+                  TextButton(
+                    onPressed: () => _selectDate(context),
+                    child: Text(
+                      '${selectedDate.toLocal()}'.split(' ')[0],
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+                Row(
+                  children: [
+                    Text('Select Ride Time:'),
+                    SizedBox(width: 10),
+                    Text(
+                      '7:30 AM',
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  _addTrip(_formKey2,startPointController2,destinationPointController2,priceController2,"to");
+                  widget.onTripAdded(); // Call the callback function
+                },
+                child: Text('Add Trip to'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 }

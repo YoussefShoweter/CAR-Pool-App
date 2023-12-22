@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'firestore_service.dart';
+import 'helpers/databaseHelper.dart';
+import 'models/userProfile.dart'; // Import your database helper class
 
 class DriverProfilePage extends StatelessWidget {
   final UserCredential userCredential;
@@ -9,8 +10,8 @@ class DriverProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: FirestoreService().getDriverProfile(userCredential.user?.uid ?? ''),
+    return FutureBuilder<UserProfile?>(
+      future: DatabaseHelper().getUserProfile(userCredential.user?.uid ?? ''),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -21,15 +22,22 @@ class DriverProfilePage extends StatelessWidget {
             child: Text('Error: ${snapshot.error}'),
           );
         } else {
-          final Map<String, dynamic> driverData = snapshot.data ?? {};
-          final String fullName = driverData['fullName'] ?? 'N/A';
-          final String email = driverData['email'] ?? 'N/A';
-          final String id = userCredential.user?.uid ?? 'N/A';
-          final String phoneNumber = driverData['mobile'] ?? 'N/A';
+          final UserProfile? driverData = snapshot.data;
+          if (driverData == null) {
+            // Handle the case where UserProfile is null
+            return Center(
+              child: Text('User profile not found.'),
+            );
+          }
+
+          final String fullName = driverData.fullName ?? 'N/A';
+          final String email = driverData.email ?? 'N/A';
+          final String id = userCredential.user!.uid ?? 'N/A';
+          final String phoneNumber = driverData.phoneNumber ?? 'N/A';
 
           return Scaffold(
             appBar: AppBar(
-              title: Text('My Profile'),
+              title: Text('Driver Profile'),
             ),
             body: Padding(
               padding: const EdgeInsets.all(16.0),

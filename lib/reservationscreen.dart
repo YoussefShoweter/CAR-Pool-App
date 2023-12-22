@@ -46,53 +46,20 @@ class _ReservationScreenState extends State<ReservationScreen> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 20),
-              Text('Date: ${widget.ride.date}'),
-              Text('Driver ID: ${widget.ride.driverId}'),
-              Text('Driver: ${widget.ride.driverName}'),
-              Text('From: ${widget.ride.startPoint}'),
-              Text('To: ${widget.ride.destinationPoint}'),
-              Text('Price: \$${widget.ride.price.toStringAsFixed(2)}'),
+              _buildDetailRow('Date', widget.ride.date),
+              _buildDetailRow('Driver ID', widget.ride.driverId),
+              _buildDetailRow('Driver', widget.ride.driverName),
+              _buildDetailRow('From', widget.ride.startPoint),
+              _buildDetailRow('To', widget.ride.destinationPoint),
+              _buildDetailRow('Price', '\$${widget.ride.price.toStringAsFixed(2)}'),
               SizedBox(height: 20),
-              Text('Choose Payment Method', style: TextStyle(fontSize: 18)),
-              Row(
-                children: [
-                  Radio(
-                    value: 'Cash',
-                    groupValue: paymentMethod,
-                    onChanged: (value) {
-                      setState(() {
-                        paymentMethod = value as String;
-                      });
-                    },
-                  ),
-                  Text('Cash'),
-                  SizedBox(width: 20),
-                  Radio(
-                    value: 'Visa',
-                    groupValue: paymentMethod,
-                    onChanged: (value) {
-                      setState(() {
-                        paymentMethod = value as String;
-                      });
-                    },
-                  ),
-                  Text('Visa'),
-                ],
-              ),
+              _buildSectionHeader('Choose Payment Method'),
+              _buildPaymentMethodRow(),
               SizedBox(height: 20),
-              Text('Review the Trip', style: TextStyle(fontSize: 18)),
-              TextFormField(
-                controller: reviewController,
-                maxLines: 3,
-                decoration: InputDecoration(labelText: 'Any comments to the rider'),
-              ),
+              _buildSectionHeader('Review the Trip'),
+              _buildReviewTextField(),
               SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  _sendReservationRequest(context, widget.ride.driverId,widget.ride.id);
-                },
-                child: Text('Send Reservation Request'),
-              ),
+              _buildSendButton(),
             ],
           ),
         ),
@@ -100,7 +67,73 @@ class _ReservationScreenState extends State<ReservationScreen> {
     );
   }
 
-  Future<void> _sendReservationRequest(BuildContext context, String driverId ,String rideID) async {
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      children: [
+        Text(label),
+        SizedBox(width: 10),
+        Text(value),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String text) {
+    return Text(
+      text,
+      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _buildPaymentMethodRow() {
+    return Row(
+      children: [
+        Radio(
+          value: 'Cash',
+          groupValue: paymentMethod,
+          onChanged: (value) {
+            setState(() {
+              paymentMethod = value as String;
+            });
+          },
+        ),
+        Text('Cash'),
+        SizedBox(width: 20),
+        Radio(
+          value: 'Visa',
+          groupValue: paymentMethod,
+          onChanged: (value) {
+            setState(() {
+              paymentMethod = value as String;
+            });
+          },
+        ),
+        Text('Visa'),
+      ],
+    );
+  }
+
+  Widget _buildReviewTextField() {
+    return TextFormField(
+      controller: reviewController,
+      maxLines: 3,
+      decoration: InputDecoration(
+        labelText: 'Any comments to the rider',
+        hintText: 'Type your comments here',
+      ),
+    );
+  }
+
+  Widget _buildSendButton() {
+    return ElevatedButton.icon(
+      onPressed: () {
+        _sendReservationRequest(context, widget.ride.driverId, widget.ride.id);
+      },
+      icon: Icon(Icons.send),
+      label: Text('Send Reservation Request'),
+    );
+  }
+
+  Future<void> _sendReservationRequest(BuildContext context, String driverId, String rideID) async {
     try {
       // Get the current user ID (assuming you have a user ID stored in FirebaseAuth)
       String userId = FirebaseAuth.instance.currentUser?.uid ?? ''; // Replace with the actual way you get the user ID
@@ -115,7 +148,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
         paymentMethod: paymentMethod,
         additionalComments: additionalComments,
         status: 'Pending',
-        rideID:rideID,
+        rideID: rideID,
       );
 
       // Add the reservation to the database

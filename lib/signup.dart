@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'helpers/usertype.dart'; // Import UserTypeProvider
 
@@ -27,6 +27,30 @@ class _SignupPageState extends State<SignupPage> {
       String mobile = mobileController.text;
       String fullName = fullNameController.text;
 
+      // Validate email format
+      if (!email.endsWith('@eng.asu.edu.eg')) {
+        _showAlert(context, 'Invalid Email Format', 'Email should end with @eng.asu.edu.eg');
+        return;
+      }
+
+      // Validate phone number length
+      if (mobile.length != 11) {
+        _showAlert(context, 'Invalid Phone Number', 'Phone number should be 11 digits');
+        return;
+      }
+
+      // Validate name is not empty
+      if (fullName.isEmpty) {
+        _showAlert(context, 'Empty Name', 'Please enter your full name');
+        return;
+      }
+
+      // Validate password is not empty
+      if (password.isEmpty) {
+        _showAlert(context, 'Empty Password', 'Please enter a password');
+        return;
+      }
+
       if (password == confirmPassword) {
         UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
@@ -44,7 +68,7 @@ class _SignupPageState extends State<SignupPage> {
 
         Navigator.pushNamed(context, '/home');
       } else {
-        print("Passwords don't match");
+        _showAlert(context, 'Passwords Do Not Match', "Passwords don't match");
       }
     } catch (e) {
       print("Error: $e");
@@ -61,6 +85,26 @@ class _SignupPageState extends State<SignupPage> {
     setState(() {
       _obscureConfirmPassword = !_obscureConfirmPassword;
     });
+  }
+
+  void _showAlert(BuildContext context, String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -178,7 +222,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                   TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/login');
+                      Navigator.pushNamed(context, '/home');
                     },
                     child: Text('Login'),
                   ),
